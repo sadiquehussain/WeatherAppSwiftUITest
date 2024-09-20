@@ -1,36 +1,81 @@
-//
-//  WeatherAppTests.swift
-//  WeatherAppTests
-//
-//  Created by Alina Sadiq on 9/19/24.
-//
-
 import XCTest
+import Combine
 @testable import WeatherApp
 
-final class WeatherAppTests: XCTestCase {
+class WeatherViewModelTests: XCTestCase {
+    var viewModel: WeatherViewModel!
+    var weatherServiceMock: WeatherServiceMock!
+    var cancellables: Set<AnyCancellable>!
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+    override func setUp() {
+        super.setUp()
+        weatherServiceMock = WeatherServiceMock()
+        viewModel = WeatherViewModel(weatherService: weatherServiceMock)
+        cancellables = []
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    override func tearDown() {
+        viewModel = nil
+        weatherServiceMock = nil
+        cancellables = nil
+        super.tearDown()
     }
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+    func testFetchWeatherSuccess() {
+        // Given
+        let expectedCity = "London"
+        let expectedWeatherResponse = WeatherResponse(
+            name: expectedCity,
+            main: Main(temp: 20.0),
+            weather: [Weather(description: "Clear", icon: "01d")]
+        )
+        weatherServiceMock.mockResponse = .success(expectedWeatherResponse)
+
+        // When
+        viewModel.fetchWeather(for: expectedCity)
+
+        // Then
+        let expectation = self.expectation(description: "Weather fetched")
+        viewModel.$weatherData
+            .dropFirst() // Skip initial nil
+            .sink { weatherData in
+                XCTAssertNotNil(weatherData)
+                XCTAssertEqual(weatherData?.name, expectedCity)
+                XCTAssertEqual(weatherData?.main.temp, 20.0)
+                XCTAssertEqual(weatherData?.weather.first?.description, "Clear")
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
+
+        waitForExpectations(timeout: 1, handler: nil)
     }
 
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
-    }
+    func testFetchWeatherFailure() {
+        // Given
+        let expectedCity = "InvalidCity"
+        weatherServiceMock.mockResponse = .failure(NSError(domain: "TestError", code: 500, userInfo: nil))
 
+        // When
+        viewModel.fetchWeather(for: expectedCity)
+
+        // Then
+        let expectation = self.expectation(description: "Error message received")
+        viewModel.$errorMessage
+            .dropFirst() // Skip initial nil
+            .sink { errorMessage in
+                XCTAssertEqual(errorMessage, "The operation couldn’t be completed. (TestError error 500.)")
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
+
+        waitForExpectations(timeout: 1, handler: nil)
+    }
+}
+
+class WeatherServiceMock: WeatherServiceProtocol {
+    var mockResponse: Result<WeatherResponse, Error>!
+
+    func fetchWeather(for city: String, completion: @escaping (Result<WeatherResponse, Error>) -> Void) {
+        completion(mockResponse)
+    }
 }
