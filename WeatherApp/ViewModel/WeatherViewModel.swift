@@ -7,15 +7,21 @@
 
 import Foundation
 
-class WeatherViewModel: ObservableObject {
-    @Published var weatherData: WeatherResponse?
-    @Published var errorMessage: String?
+// ViewModel responsible for providing weather data to the view
 
-    private let weatherService: WeatherServiceProtocol
+class WeatherViewModel: ObservableObject {
+    @Published var weatherData: WeatherResponse?  // Published property for weather data
+    @Published var errorMessage: String?          // Published property for error messages
+
+    private let weatherService: WeatherServiceProtocol 
+
+    // Initializer accepting a WeatherService instance
 
     init(weatherService: WeatherServiceProtocol) {
         self.weatherService = weatherService
     }
+
+    // Method to fetch weather for a specified city
 
     func fetchWeather(for city: String) {
         weatherService.fetchWeather(for: city) { [weak self] result in
@@ -31,6 +37,8 @@ class WeatherViewModel: ObservableObject {
         }
     }
 
+    // Method to get the weather description
+
     func getWeatherDescription() -> String {
         guard let weatherData = weatherData else { return "Please enter a valid location" }
         let cityName = weatherData.name
@@ -38,6 +46,8 @@ class WeatherViewModel: ObservableObject {
         let description = weatherData.weather.first?.description ?? ""
         return "Weather in \(cityName): \(temperature)°C, \(description)"
     }
+
+    // Method to construct the URL for the weather icon
 
     func getWeatherIconURL() -> URL? {
         guard let iconCode = weatherData?.weather.first?.icon else { return nil }

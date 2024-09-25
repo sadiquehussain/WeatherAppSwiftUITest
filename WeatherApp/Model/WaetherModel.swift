@@ -7,6 +7,7 @@
 
 import Foundation
 
+// Model representing weather data
 struct WeatherResponse: Codable {
     let name: String
     let main: Main

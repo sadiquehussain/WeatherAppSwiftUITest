@@ -7,6 +7,8 @@
 
 import Foundation
 
+// Service class for fetching weather data from an API
+
 protocol WeatherServiceProtocol {
     func fetchWeather(for city: String, completion: @escaping (Result<WeatherResponse, Error>) -> Void)
 }
